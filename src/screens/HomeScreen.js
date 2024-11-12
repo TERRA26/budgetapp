@@ -2,578 +2,349 @@ import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     ScrollView,
+    StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
-    Dimensions,
     RefreshControl,
-    Alert
+    Dimensions
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import {
-    LineChart,
-    BarChart,
-    ProgressChart,
-} from 'react-native-chart-kit';
-import CustomButton from '../components/CustomButton';
-import {
-    logout,
-    getUserProfile,
-    account,
-    getBudgets,
-} from '../services/appwrite';
+import { LineChart } from 'react-native-chart-kit';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { createTransaction, getUserProfile, getBudgets } from '../services/appwrite';
 
-const { width } = Dimensions.get('window');
-
-function HomeScreen({ navigation }) {
-    // State for user data
-    const [userData, setUserData] = useState(null);
+const HomeScreen = ({ navigation }) => {
     const [profile, setProfile] = useState(null);
     const [budgets, setBudgets] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [transactions, setTransactions] = useState([]);
+    const [userData, setUserData] = useState(null);
     const [selectedPeriod, setSelectedPeriod] = useState('month');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Fetch user data
-    const fetchUserData = async () => {
-        try {
-            const user = await account.get();
-            const userProfile = await getUserProfile(user.$id);
-            const userBudgets = await getBudgets();
+    const monthlyExpenseData = {
+        labels: ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov'],
+        datasets: [{
+            data: [2100, 1950, 2300, 2800, 2600, 3000]
+        }]
+    };
 
-            setUserData(user);
+    // Simulated transactions data
+    const simulateTransactions = () => {
+        const currentDate = new Date('2024-11-12');
+        const transactions = [];
+        const categories = ['Groceries', 'Transportation', 'Entertainment', 'Shopping', 'Bills'];
+
+        for (let i = 0; i < 20; i++) {
+            const date = new Date(currentDate);
+            date.setDate(date.getDate() - i);
+
+            transactions.push({
+                id: i,
+                amount: Math.floor(Math.random() * 200) + 10,
+                category: categories[Math.floor(Math.random() * categories.length)],
+                date: date.toISOString(),
+                type: Math.random() > 0.7 ? 'income' : 'expense',
+                description: `Transaction ${i + 1}`
+            });
+        }
+        return transactions;
+    };
+
+
+    const fetchData = async () => {
+        try {
+            const userProfile = await getUserProfile();
+            const userBudgets = await getBudgets();
             setProfile(userProfile);
             setBudgets(userBudgets.documents);
-            setError(null);
+            setTransactions(simulateTransactions());
         } catch (error) {
-            console.error('Error fetching user data:', error);
-            setError('Failed to load user data');
-            Alert.alert(
-                'Error',
-                'Failed to load your profile data. Please try again.',
-                [{ text: 'OK' }]
-            );
-        } finally {
-            setLoading(false);
+            console.error('Error fetching data:', error);
         }
     };
 
-    // Initial data fetch
-    useEffect(() => {
-        fetchUserData();
-    }, []);
-
-    // Refresh control
-    const onRefresh = React.useCallback(async () => {
+    const onRefresh = async () => {
         setRefreshing(true);
-        await fetchUserData();
+        await fetchData();
         setRefreshing(false);
-    }, []);
+    };
 
-    // Logout handler
-    const handleLogout = async () => {
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchData();
+        }, [])
+    );
+
+    const formatCurrency = (amount) => {
+        return `$${amount.toFixed(2)}`;
+    };
+
+    const getTransactionIcon = (category) => {
+        const icons = {
+            'Groceries': 'cart',
+            'Transportation': 'car',
+            'Entertainment': 'film',
+            'Shopping': 'bag',
+            'Bills': 'document-text'
+        };
+        return icons[category] || 'cash';
+    };
+
+    const handleAddTransaction = async (type) => {
         try {
-            await logout();
-            navigation.replace('Login');
+            const amount = Math.floor(Math.random() * 200) + 10;
+            const categories = ['Groceries', 'Transportation', 'Entertainment', 'Shopping', 'Bills'];
+            const category = categories[Math.floor(Math.random() * categories.length)];
+            const date = new Date().toISOString();
+            const description = `Random ${type} transaction`;
+
+            await createTransaction({
+                amount,
+                category,
+                date,
+                type,
+                description
+            });
+
+            setTransactions([
+                ...transactions,
+                {
+                    id: transactions.length,
+                    amount,
+                    category,
+                    date,
+                    type,
+                    description
+                }
+            ]);
         } catch (error) {
-            console.error('Logout failed:', error);
-            Alert.alert('Error', 'Failed to logout. Please try again.');
+            console.error('Error creating transaction:', error);
         }
     };
 
-    // Calculate budget statistics
-    const calculateBudgetStats = () => {
-        if (!profile) return { budget: 0, spent: 0, remaining: 0 };
+    const handlePositiveTransaction = async (type) => {
+        try {
+            const amount = Math.floor(Math.random() * 200) + 10;
+            const categories = ['Freelance', 'Investments', 'Refunds', 'Deposits'];
+            const category = categories[Math.floor(Math.random() * categories.length)];
+            const date = new Date().toISOString();
+            const description = `Random ${type} transaction`;
 
-        const monthlyBudget = profile.monthlyBudgetLimit || 0;
-        const spent = monthlyBudget * 0.6; // This should be replaced with actual spending data
-        const remaining = monthlyBudget - spent;
+            await createTransaction({
+                amount,
+                category,
+                date,
+                type,
+                description
+            });
 
-        return {
-            budget: monthlyBudget,
-            spent: spent,
-            remaining: remaining
-        };
+            setTransactions([
+                ...transactions,
+                {
+                    id: transactions.length,
+                    amount,
+                    category,
+                    date,
+                    type,
+                    description
+                }
+            ]);
+        } catch (error) {
+            console.error('Error creating transaction:', error);
+        }
     };
 
-    // Format spending data based on selected period
-    const getSpendingData = () => {
-        // This should be replaced with actual transaction data
-        return {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                data: [
-                    profile?.monthlyBudgetLimit * 0.7,
-                    profile?.monthlyBudgetLimit * 0.8,
-                    profile?.monthlyBudgetLimit * 0.6,
-                    profile?.monthlyBudgetLimit * 0.9,
-                    profile?.monthlyBudgetLimit * 0.75,
-                    profile?.monthlyBudgetLimit * 0.85,
-                ].map(val => val || 0),
-            }]
-        };
-    };
-
-    // Calculate budget progress
-    const getBudgetProgress = () => {
-        if (!profile?.categories) return { labels: [], data: [] };
-
-        const categories = profile.categories.slice(0, 3);
-        return {
-            labels: categories.map(cat => cat.name),
-            data: categories.map(cat =>
-                (cat.budget > 0 ? cat.spent / cat.budget : 0) || 0
-            )
-        };
-    };
-
-    if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading your dashboard...</Text>
-            </View>
-        );
-    }
-
-    const budgetStats = calculateBudgetStats();
-    const spendingData = getSpendingData();
-    const budgetProgress = getBudgetProgress();
-
-    // Component render
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header */}
+        <ScrollView
+            style={styles.container}
+            refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+        >
+            {/* Header Section */}
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.greeting}>Hello, {profile?.name || 'User'}</Text>
-                    <Text style={styles.date}>
-                        {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                <Text style={styles.welcomeText}>
+                    Welcome back, {profile?.name || 'User'}
+                </Text>
+                <View style={styles.balanceCard}>
+                    <Text style={styles.balanceLabel}>Current Balance</Text>
+                    <Text style={styles.balanceAmount}>
+                        {formatCurrency(profile?.currentBalance || 0)}
                     </Text>
                 </View>
-                <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Profile')}
-                        style={styles.profileButton}
-                    >
-                        <MaterialIcons name="person" size={24} color="#1976D2" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={handleLogout}
-                        style={styles.logoutButton}
-                    >
-                        <MaterialIcons name="logout" size={24} color="#666" />
-                    </TouchableOpacity>
-                </View>
             </View>
 
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-            >
-                {/* Quick Stats Cards */}
-                <View style={styles.quickStatsContainer}>
-                    <View style={[styles.statCard, { backgroundColor: '#E3F2FD' }]}>
-                        <MaterialIcons name="account-balance-wallet" size={24} color="#1976D2" />
-                        <Text style={styles.statAmount}>
-                            ${budgetStats.budget.toLocaleString()}
-                        </Text>
-                        <Text style={styles.statLabel}>Monthly Budget</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: '#E8F5E9' }]}>
-                        <MaterialIcons name="trending-down" size={24} color="#43A047" />
-                        <Text style={styles.statAmount}>
-                            ${budgetStats.spent.toLocaleString()}
-                        </Text>
-                        <Text style={styles.statLabel}>Spent</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: '#FFF3E0' }]}>
-                        <MaterialIcons name="savings" size={24} color="#EF6C00" />
-                        <Text style={styles.statAmount}>
-                            ${budgetStats.remaining.toLocaleString()}
-                        </Text>
-                        <Text style={styles.statLabel}>Remaining</Text>
-                    </View>
-                </View>
+            {/* Quick Actions */}
+            <View style={styles.quickActions}>
+                <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => navigation.navigate('AddTransaction')}
+                >
+                    <Ionicons name="add-circle" size={24} color="#fff" />
+                    <Text style={styles.actionText}>Add Transaction</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+                    onPress={() => navigation.navigate('Budgets')}
+                >
+                    <Ionicons name="pie-chart" size={24} color="#fff" />
+                    <Text style={styles.actionText}>View Budgets</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#F44336' }]}
+                    onPress={() => handleAddTransaction('expense')}
+                >
+                    <Ionicons name="trending-down" size={24} color="#fff" />
+                    <Text style={styles.actionText}>Add Expense</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+                    onPress={() => handlePositiveTransaction('income')}
+                >
+                    <Ionicons name="trending-up" size={24} color="#fff" />
+                    <Text style={styles.actionText}>Add Income</Text>
+                </TouchableOpacity>
+            </View>
 
-                {/* Saving Goal Progress */}
-                {profile?.savingGoals && (
-                    <View style={styles.savingGoalCard}>
-                        <View style={styles.savingGoalHeader}>
-                            <Text style={styles.savingGoalTitle}>
-                                {profile.savingGoals.charAt(0).toUpperCase() +
-                                    profile.savingGoals.slice(1)} Goal
-                            </Text>
-                            <Text style={styles.savingGoalAmount}>
-                                ${profile.targetAmount?.toLocaleString()}
-                            </Text>
-                        </View>
-                        <View style={styles.savingGoalProgress}>
-                            <View
-                                style={[
-                                    styles.progressBar,
-                                    { width: `${(budgetStats.spent / profile.targetAmount * 100) || 0}%` }
-                                ]}
+            {/* Budget Overview Chart */}
+            <View style={styles.chartContainer}>
+                <Text style={styles.sectionTitle}>Expense Overview</Text>
+                <LineChart
+                    data={monthlyExpenseData}
+                    width={Dimensions.get('window').width - 40}
+                    height={220}
+                    chartConfig={{
+                        backgroundColor: '#ffffff',
+                        backgroundGradientFrom: '#ffffff',
+                        backgroundGradientTo: '#ffffff',
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(81, 150, 244, ${opacity})`,
+                        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                        style: {
+                            borderRadius: 16,
+                        },
+                    }}
+                    bezier
+                    style={styles.chart}
+                />
+            </View>
+
+            {/* Recent Transactions */}
+            <View style={styles.transactionsContainer}>
+                <Text style={styles.sectionTitle}>Recent Transactions</Text>
+                {transactions.slice(0, 5).map((transaction) => (
+                    <View key={transaction.id} style={styles.transactionItem}>
+                        <View style={styles.transactionIcon}>
+                            <Ionicons
+                                name={getTransactionIcon(transaction.category)}
+                                size={24}
+                                color="#5196F4"
                             />
                         </View>
-                        <Text style={styles.savingGoalDate}>
-                            Target Date: {new Date(profile.targetDate).toLocaleDateString()}
+                        <View style={styles.transactionDetails}>
+                            <Text style={styles.transactionCategory}>
+                                {transaction.category}
+                            </Text>
+                            <Text style={styles.transactionDate}>
+                                {new Date(transaction.date).toLocaleDateString()}
+                            </Text>
+                        </View>
+                        <Text style={[
+                            styles.transactionAmount,
+                            { color: transaction.type === 'income' ? '#4CAF50' : '#F44336' }
+                        ]}>
+                            {transaction.type === 'income' ? '+' : '-'}
+                            {formatCurrency(transaction.amount)}
                         </Text>
                     </View>
-                )}
+                ))}
+            </View>
 
-                {/* Period Selector */}
-                <View style={styles.periodSelector}>
-                    <TouchableOpacity
-                        style={[styles.periodButton, selectedPeriod === 'week' && styles.selectedPeriod]}
-                        onPress={() => setSelectedPeriod('week')}
-                    >
-                        <Text style={[
-                            styles.periodButtonText,
-                            selectedPeriod === 'week' && styles.selectedPeriodText
-                        ]}>Week</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.periodButton, selectedPeriod === 'month' && styles.selectedPeriod]}
-                        onPress={() => setSelectedPeriod('month')}
-                    >
-                        <Text style={[
-                            styles.periodButtonText,
-                            selectedPeriod === 'month' && styles.selectedPeriodText
-                        ]}>Month</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.periodButton, selectedPeriod === 'year' && styles.selectedPeriod]}
-                        onPress={() => setSelectedPeriod('year')}
-                    >
-                        <Text style={[
-                            styles.periodButtonText,
-                            selectedPeriod === 'year' && styles.selectedPeriodText
-                        ]}>Year</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Spending Chart */}
-                <View style={styles.chartContainer}>
-                    <Text style={styles.chartTitle}>Spending Overview</Text>
-                    <LineChart
-                        data={spendingData}
-                        width={width - 40}
-                        height={220}
-                        chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
-                            decimalPlaces: 0,
-                            color: (opacity = 1) => `rgba(25, 118, 210, ${opacity})`,
-                            style: { borderRadius: 16 },
-                            propsForDots: {
-                                r: "6",
-                                strokeWidth: "2",
-                                stroke: "#1976D2"
-                            }
-                        }}
-                        bezier
-                        style={styles.chart}
-                    />
-                </View>
-
-                {/* Budget Progress */}
-                <View style={styles.chartContainer}>
-                    <Text style={styles.chartTitle}>Budget Progress</Text>
-                    <ProgressChart
-                        data={budgetProgress}
-                        width={width - 40}
-                        height={220}
-                        chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
-                            decimalPlaces: 1,
-                            color: (opacity = 1) => `rgba(25, 118, 210, ${opacity})`,
-                            style: { borderRadius: 16 }
-                        }}
-                        style={styles.chart}
-                    />
-                </View>
-                <View style={styles.transactionsContainer}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Recent Transactions</Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('Transactions')}
-                            style={styles.seeAllButton}
-                        >
-                            <Text style={styles.seeAllText}>See All</Text>
-                        </TouchableOpacity>
+            {/* Connected Accounts */}
+            <View style={styles.connectedAccountsContainer}>
+                <Text style={styles.sectionTitle}>Connected Accounts</Text>
+                <View style={styles.accountsList}>
+                    {/* Simulated connected accounts */}
+                    <View style={styles.accountItem}>
+                        <Ionicons name="card" size={24} color="#5196F4" />
+                        <Text style={styles.accountName}>Main Checking</Text>
+                        <Text style={styles.accountBalance}>{formatCurrency(4500)}</Text>
                     </View>
-
-                    {/* Replace with actual transactions data */}
-                    <TransactionItem
-                        icon="restaurant"
-                        category="Food"
-                        title="Grocery Store"
-                        amount="-$85.50"
-                        date="Today"
-                    />
-                    <TransactionItem
-                        icon="local-taxi"
-                        category="Transport"
-                        title="Uber Ride"
-                        amount="-$12.99"
-                        date="Yesterday"
-                    />
-                    <TransactionItem
-                        icon="shopping-bag"
-                        category="Shopping"
-                        title="Amazon"
-                        amount="-$145.20"
-                        date="Mar 28"
-                    />
-                </View>
-
-                {/* Quick Actions */}
-                <View style={styles.quickActionsContainer}>
-                    <Text style={styles.sectionTitle}>Quick Actions</Text>
-                    <View style={styles.quickActionsGrid}>
-                        <QuickActionButton
-                            icon="add"
-                            title="Add Transaction"
-                            onPress={() => navigation.navigate('AddTransaction')}
-                        />
-                        <QuickActionButton
-                            icon="bar-chart"
-                            title="View Reports"
-                            onPress={() => navigation.navigate('Reports')}
-                        />
-                        <QuickActionButton
-                            icon="account-balance"
-                            title="Budgets"
-                            onPress={() => navigation.navigate('Budgets')}
-                        />
-                        <QuickActionButton
-                            icon="settings"
-                            title="Settings"
-                            onPress={() => navigation.navigate('Settings')}
-                        />
+                    <View style={styles.accountItem}>
+                        <Ionicons name="savings" size={24} color="#4CAF50" />
+                        <Text style={styles.accountName}>Savings</Text>
+                        <Text style={styles.accountBalance}>{formatCurrency(12000)}</Text>
                     </View>
                 </View>
-            </ScrollView>
-        </SafeAreaView>
+            </View>
+        </ScrollView>
     );
-}
-
-// Transaction Item Component
-const TransactionItem = ({ icon, category, title, amount, date }) => (
-    <View style={styles.transactionItem}>
-        <View style={styles.transactionIcon}>
-            <MaterialIcons name={icon} size={24} color="#1976D2" />
-        </View>
-        <View style={styles.transactionInfo}>
-            <View>
-                <Text style={styles.transactionTitle}>{title}</Text>
-                <Text style={styles.transactionCategory}>{category}</Text>
-            </View>
-            <View>
-                <Text style={[
-                    styles.transactionAmount,
-                    { color: amount.startsWith('-') ? '#ff5252' : '#4caf50' }
-                ]}>{amount}</Text>
-                <Text style={styles.transactionDate}>{date}</Text>
-            </View>
-        </View>
-    </View>
-);
-
-// Quick Action Button Component
-const QuickActionButton = ({ icon, title, onPress }) => (
-    <TouchableOpacity style={styles.quickActionButton} onPress={onPress}>
-        <View style={styles.quickActionIcon}>
-            <MaterialIcons name={icon} size={24} color="#1976D2" />
-        </View>
-        <Text style={styles.quickActionTitle}>{title}</Text>
-    </TouchableOpacity>
-);
+};
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-    },
-    loadingText: {
-        fontSize: 16,
-        color: '#666',
+        backgroundColor: '#f5f5f5',
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         padding: 20,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        backgroundColor: '#5196F4',
+        borderBottomLeftRadius: 25,
+        borderBottomRightRadius: 25,
     },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    profileButton: {
-        marginRight: 16,
-        padding: 8,
-    },
-    logoutButton: {
-        padding: 8,
-    },
-    greeting: {
+    welcomeText: {
         fontSize: 24,
+        color: '#fff',
         fontWeight: 'bold',
-        color: '#333',
+        marginBottom: 20,
     },
-    date: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 4,
-    },
-    quickStatsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    balanceCard: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         padding: 20,
+        borderRadius: 15,
     },
-    statCard: {
-        width: '31%',
+    balanceLabel: {
+        color: '#fff',
+        fontSize: 16,
+        opacity: 0.8,
+    },
+    balanceAmount: {
+        color: '#fff',
+        fontSize: 32,
+        fontWeight: 'bold',
+        marginTop: 5,
+    },
+    quickActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        padding: 20,
+        marginTop: -30,
+    },
+    actionButton: {
+        backgroundColor: '#5196F4',
         padding: 15,
         borderRadius: 12,
-        alignItems: 'center',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-    },
-    statAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginTop: 8,
-        color: '#333',
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 4,
-    },
-    savingGoalCard: {
-        margin: 20,
-        padding: 16,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-    },
-    savingGoalHeader: {
+        width: '45%',
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
-    },
-    savingGoalTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-    },
-    savingGoalAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1976D2',
-    },
-    savingGoalProgress: {
-        height: 8,
-        backgroundColor: '#f5f5f5',
-        borderRadius: 4,
-        marginBottom: 8,
-    },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#1976D2',
-        borderRadius: 4,
-    },
-    savingGoalDate: {
-        fontSize: 12,
-        color: '#666',
-    },
-    // ... (previous styles remain the same)
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    seeAllButton: {
-        padding: 4,
-    },
-    seeAllText: {
-        fontSize: 14,
-        color: '#1976D2',
-        fontWeight: '600',
-    },
-    periodSelector: {
-        flexDirection: 'row',
         justifyContent: 'center',
-        marginBottom: 20,
-        paddingHorizontal: 20,
+        elevation: 3,
     },
-    periodButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        marginHorizontal: 4,
-        borderRadius: 20,
-        backgroundColor: '#f5f5f5',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-    },
-    selectedPeriod: {
-        backgroundColor: '#1976D2',
-        elevation: 2,
-        shadowColor: '#1976D2',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-    periodButtonText: {
-        color: '#666',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    selectedPeriodText: {
+    actionText: {
         color: '#fff',
+        marginLeft: 8,
         fontWeight: '600',
     },
     chartContainer: {
-        padding: 20,
         backgroundColor: '#fff',
-        borderRadius: 12,
-        marginBottom: 20,
-        marginHorizontal: 20,
+        margin: 20,
+        padding: 15,
+        borderRadius: 15,
         elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
     },
-    chartTitle: {
+    sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 15,
@@ -584,138 +355,74 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     transactionsContainer: {
-        padding: 20,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
+        backgroundColor: '#fff',
+        margin: 20,
+        padding: 15,
+        borderRadius: 15,
+        elevation: 2,
     },
     transactionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        marginBottom: 10,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
     },
     transactionIcon: {
         width: 40,
         height: 40,
+        backgroundColor: '#f0f7ff',
         borderRadius: 20,
-        backgroundColor: '#E3F2FD',
+        alignItems: 'center',
         justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
     },
-    transactionInfo: {
+    transactionDetails: {
         flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        marginLeft: 12,
     },
-    transactionTitle: {
+    transactionCategory: {
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
     },
-    transactionCategory: {
-        fontSize: 12,
+    transactionDate: {
+        fontSize: 14,
         color: '#666',
-        marginTop: 4,
+        marginTop: 2,
     },
     transactionAmount: {
         fontSize: 16,
         fontWeight: '600',
-        textAlign: 'right',
     },
-    transactionDate: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 4,
-        textAlign: 'right',
-    },
-    quickActionsContainer: {
-        padding: 20,
-        paddingBottom: 40,
-    },
-    quickActionsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginTop: 15,
-    },
-    quickActionButton: {
-        width: '48%',
+    connectedAccountsContainer: {
         backgroundColor: '#fff',
+        margin: 20,
         padding: 15,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginBottom: 15,
+        borderRadius: 15,
         elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        marginBottom: 30,
     },
-    quickActionIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#E3F2FD',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
+    accountsList: {
+        gap: 10,
     },
-    quickActionTitle: {
-        fontSize: 14,
-        color: '#333',
-        fontWeight: '500',
-        textAlign: 'center',
-    },
-    refreshButton: {
-        position: 'absolute',
-        right: 20,
-        bottom: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#1976D2',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-    },
-    noTransactionsContainer: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    noTransactionsText: {
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-        marginVertical: 10,
-    },
-    addTransactionButton: {
+    accountItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E3F2FD',
-        padding: 12,
-        borderRadius: 8,
-        marginTop: 10,
+        padding: 15,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 10,
     },
-    addTransactionButtonText: {
-        color: '#1976D2',
-        marginLeft: 8,
+    accountName: {
+        flex: 1,
+        marginLeft: 12,
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    accountBalance: {
+        fontSize: 16,
         fontWeight: '600',
+        color: '#5196F4',
     },
 });
 
