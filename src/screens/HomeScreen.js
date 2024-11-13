@@ -35,6 +35,8 @@ const HomeScreen = ({ navigation }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedBudgetId, setSelectedBudgetId] = useState(null);
     const [savingsAmount, setSavingsAmount] = useState('');
+    const [isSavingsModalVisible, setIsSavingsModalVisible] = useState(false);
+    const [selectedBudget, setSelectedBudget] = useState(null);
     const [newBudget, setNewBudget] = useState({
         category: '',
         amount: '',
@@ -102,29 +104,46 @@ const HomeScreen = ({ navigation }) => {
         }
     };
 
-    const handleUpdateSavings = async (budgetId, amount) => {
+    const handleUpdateSavings = async () => {
         try {
-            const numAmount = parseFloat(amount);
+            if (!selectedBudget) {
+                throw new Error('No budget selected');
+            }
+
+            const numAmount = parseFloat(savingsAmount);
             if (isNaN(numAmount) || numAmount <= 0) {
                 throw new Error('Please enter a valid amount');
             }
 
             // Check if there's enough available balance
-            if (numAmount > profile.availableBalance) {
+            if (numAmount > profile.currentBalance) {
                 throw new Error('Insufficient available balance');
             }
 
             // Update the budget's savings
-            await updateBudgetSavings(budgetId, numAmount);
+            await updateBudgetSavings(selectedBudget.$id, numAmount);
 
-            // Update the profile with new available balance and total savings
+            // Calculate total savings from all budgets
+            const budgetsResponse = await databases.listDocuments(
+                DATABASE_ID,
+                BUDGETS_COLLECTION_ID,
+                [Query.equal('userId', profile.userId)]
+            );
+
+            const totalSavings = budgetsResponse.documents.reduce((sum, budget) =>
+                sum + (parseFloat(budget.currentSaved) || 0), 0);
+
+            // Update the profile with new balance and total savings
             const updatedProfile = await updateUserProfile(profile.$id, {
-                availableBalance: profile.availableBalance - numAmount,
-                totalSavings: (profile.totalSavings || 0) + numAmount
+                currentBalance: profile.currentBalance - numAmount,
+                totalSavings: totalSavings
             });
 
             // Update local state
             setProfile(updatedProfile);
+            setIsSavingsModalVisible(false);
+            setSavingsAmount('');
+            setSelectedBudget(null);
 
             // Refresh budgets
             fetchBudgets(profile.userId);
@@ -562,12 +581,42 @@ const HomeScreen = ({ navigation }) => {
                         </View>
                     </View>
 
-                    {budgets.map(budget => (
-                        <BudgetProgressCard
-                            key={budget.$id}
-                            budget={budget}
-                            onUpdateSavings={handleUpdateSavings}
-                        />
+                    {budgets.map((budget) => (
+                        <View key={budget.$id} style={styles.budgetItem}>
+                            <View style={styles.budgetHeader}>
+                                <Text style={styles.budgetCategory}>{budget.category}</Text>
+                                <Text style={styles.budgetAmount}>
+                                    {formatCurrency(budget.amount)}
+                                </Text>
+                            </View>
+                            <View style={styles.budgetProgress}>
+                                <View style={styles.savingsInfo}>
+                                    <Text>Saved: {formatCurrency(budget.currentSaved || 0)}</Text>
+                                    <Text>Goal: {formatCurrency(budget.amount)}</Text>
+                                </View>
+                                <View style={styles.progressBarContainer}>
+                                    <View
+                                        style={[
+                                            styles.progressBar,
+                                            {
+                                                width: `${Math.min(((budget.currentSaved || 0) / budget.amount) * 100, 100)}%`,
+                                                backgroundColor: '#4CAF50'
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.addSavingsButton}
+                                    onPress={() => {
+                                        setSelectedBudget(budget);
+                                        setIsSavingsModalVisible(true);
+                                    }}
+                                >
+                                    <Text style={styles.addSavingsButtonText}>Add to Savings</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ))}
                     ))}
                 </ScrollView>
 
@@ -606,6 +655,52 @@ const HomeScreen = ({ navigation }) => {
                     </View>
                 </Modal>
             </View>
+            <Modal
+                visible={isSavingsModalVisible}
+                animationType="slide"
+                transparent={true}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.modalContainer}
+                >
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Add to Savings</Text>
+                        <Text style={styles.budgetName}>
+                            {selectedBudget?.category || ''} Savings Goal
+                        </Text>
+                        <Text style={styles.currentSavings}>
+                            Current Savings: {formatCurrency(selectedBudget?.currentSaved || 0)}
+                        </Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter amount to save"
+                            placeholderTextColor={'#999'}
+                            keyboardType="numeric"
+                            value={savingsAmount}
+                            onChangeText={setSavingsAmount}
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => {
+                                    setIsSavingsModalVisible(false);
+                                    setSavingsAmount('');
+                                    setSelectedBudget(null);
+                                }}
+                            >
+                                <Text style={styles.buttonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.createButton]}
+                                onPress={handleUpdateSavings}
+                            >
+                                <Text style={styles.buttonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </ScrollView>
     );
 };
@@ -1026,6 +1121,57 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#2196F3',
+    },
+    addSavingsButton: {
+        backgroundColor: '#4CAF50',
+        padding: 8,
+        borderRadius: 8,
+        marginTop: 10,
+    },
+    addSavingsButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    budgetName: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 10,
+        color: '#333',
+    },
+    currentSavings: {
+        fontSize: 16,
+        color: '#666',
+        marginBottom: 15,
+    },
+    savingsInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 5,
+    },
+    progressBarContainer: {
+        height: 10,
+        backgroundColor: '#e9ecef',
+        borderRadius: 5,
+        overflow: 'hidden',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 20,
+        width: '80%',
+    },
+    modalTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        color: '#333',
     },
 });
 
