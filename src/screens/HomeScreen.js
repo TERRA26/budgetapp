@@ -486,6 +486,57 @@ const HomeScreen = ({ navigation }) => {
                 </KeyboardAvoidingView>
             </Modal>
 
+            {/* Budgets List */}
+            <View style={styles.budgetsContainer}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Your Budgets</Text>
+                    <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() => setIsNewBudgetModalVisible(true)}
+                    >
+                        <Text style={styles.addButtonText}>+ Add Budget</Text>
+                    </TouchableOpacity>
+                </View>
+                {budgets.map((budget) => (
+                    <View key={budget.$id} style={styles.budgetItem}>
+                        <View style={styles.budgetHeader}>
+                            <Text style={styles.budgetCategory}>{budget.category}</Text>
+                            <Text style={styles.budgetAmount}>
+                                {formatCurrency(budget.amount)}
+                            </Text>
+                        </View>
+                        <View style={styles.budgetProgress}>
+                            {/* Calculate spent amount from transactions */}
+                            {(() => {
+                                const spent = transactions
+                                    .filter(t =>
+                                        t.category === budget.category &&
+                                        t.type === 'expense' &&
+                                        new Date(t.date).getMonth() === new Date().getMonth()
+                                    )
+                                    .reduce((sum, t) => sum + t.amount, 0);
+                                const percentage = Math.min((spent / budget.amount) * 100, 100);
+
+                                return (
+                                    <>
+                                        <View
+                                            style={[
+                                                styles.progressBar,
+                                                { width: `${percentage}%` },
+                                                { backgroundColor: percentage > 90 ? '#F44336' : '#4CAF50' }
+                                            ]}
+                                        />
+                                        <Text style={styles.budgetSpent}>
+                                            Spent: {formatCurrency(spent)} / {formatCurrency(budget.amount)}
+                                        </Text>
+                                    </>
+                                );
+                            })()}
+                        </View>
+                    </View>
+                ))}
+            </View>
+
 
         </ScrollView>
     );
@@ -683,13 +734,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    budgetProgress: {
-        height: 6,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 3,
-        marginTop: 5,
-        marginBottom: 15,
-    },
     budgetProgressFill: {
         height: '100%',
         borderRadius: 3,
@@ -803,7 +847,72 @@ const styles = StyleSheet.create({
         borderColor: '#000',
         marginBottom: 15,
 
-    }
+    },
+    budgetsContainer: {
+        backgroundColor: '#fff',
+        margin: 20,
+        padding: 15,
+        borderRadius: 15,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.23,
+        shadowRadius: 2.62,
+    },
+    budgetItem: {
+        marginBottom: 15,
+        padding: 15,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 10,
+    },
+    budgetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    budgetCategory: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    budgetAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#5196F4',
+    },
+    budgetProgress: {
+        height: 30,
+        backgroundColor: '#e9ecef',
+        borderRadius: 5,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        position: 'absolute',
+        left: 0,
+    },
+    budgetSpent: {
+        position: 'absolute',
+        width: '100%',
+        textAlign: 'center',
+        lineHeight: 30,
+        color: '#333',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    addButton: {
+        backgroundColor: '#5196F4',
+        padding: 8,
+        borderRadius: 8,
+    },
+    addButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
 });
 
 export default HomeScreen;
