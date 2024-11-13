@@ -182,7 +182,12 @@ export const createBudget = async (budgetData) => {
             ID.unique(),
             {
                 userId: user.$id,
-                ...budgetData,
+                category: budgetData.category,
+                savingsGoal: parseFloat(budgetData.amount) || 0,
+                currentSaved: 0,
+                startDate: new Date().toISOString(),
+                period: budgetData.period || 'monthly',
+                isActive: true,
                 createdAt: new Date().toISOString(),
             }
         );
@@ -191,4 +196,30 @@ export const createBudget = async (budgetData) => {
         throw error;
     }
 };
+
+export const updateBudgetSavings = async (budgetId, amountSaved) => {
+    try {
+        const budget = await databases.getDocument(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_BUDGETS_COLLECTION,
+            budgetId
+        );
+
+        const newCurrentSaved = parseFloat(budget.currentSaved || 0) + parseFloat(amountSaved);
+
+        return await databases.updateDocument(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_BUDGETS_COLLECTION,
+            budgetId,
+            {
+                currentSaved: newCurrentSaved,
+                updatedAt: new Date().toISOString()
+            }
+        );
+    } catch (error) {
+        console.error('Appwrite service :: updateBudgetSavings :: error: ', error);
+        throw error;
+    }
+};
+
 

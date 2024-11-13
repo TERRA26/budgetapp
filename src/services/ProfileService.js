@@ -194,3 +194,30 @@ export const getCurrentRewardTier = (points) => {
     if (points >= tiers.SILVER.minPoints) return tiers.SILVER;
     return tiers.BRONZE;
 };
+
+export const calculateBudgetProgress = (budget) => {
+    const progress = (budget.currentSaved / budget.savingsGoal) * 100;
+    const remaining = budget.savingsGoal - budget.currentSaved;
+    const isCompleted = budget.currentSaved >= budget.savingsGoal;
+
+    // Calculate monthly required savings based on income
+    const monthlyRequired = budget.period === 'monthly'
+        ? (remaining / getMonthsRemaining(budget.startDate))
+        : remaining / 12;
+
+    return {
+        progress: Math.min(progress, 100),
+        remaining,
+        isCompleted,
+        monthlyRequired
+    };
+};
+
+const getMonthsRemaining = (startDate) => {
+    const start = new Date(startDate);
+    const current = new Date();
+    return Math.max(1,
+        12 - (current.getMonth() - start.getMonth() +
+            (12 * (current.getFullYear() - start.getFullYear())))
+    );
+}

@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Query } from 'appwrite';
 import { databases, account } from '../services/appwrite';
 import {LinearGradient} from "expo-linear-gradient";
+import { calculateBudgetProgress } from '../services/BudgetService';
 
 const DATABASE_ID = 'budgetease';
 const PROFILES_COLLECTION_ID = 'profiles';
@@ -84,11 +85,28 @@ const HomeScreen = ({ navigation }) => {
                 BUDGETS_COLLECTION_ID,
                 [Query.equal('userId', userId)]
             );
-            setBudgets(response.documents);
-            return response.documents;
+
+            // Process each budget with the calculation
+            const processedBudgets = response.documents.map(budget => ({
+                ...budget,
+                progress: calculateBudgetProgress(budget)
+            }));
+
+            setBudgets(processedBudgets);
+            return processedBudgets;
         } catch (error) {
             console.error('Error fetching budgets:', error);
             Alert.alert('Error', 'Failed to fetch budget data');
+        }
+    };
+
+    const handleUpdateSavings = async (budgetId, amount) => {
+        try {
+            await updateSavingsProgress(budgetId, amount);
+            await fetchBudgets(user.$id); // Refresh budgets
+            Alert.alert('Success', 'Savings updated successfully!');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update savings');
         }
     };
 
