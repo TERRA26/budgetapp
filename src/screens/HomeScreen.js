@@ -51,13 +51,35 @@ const HomeScreen = ({ navigation }) => {
                 PROFILES_COLLECTION_ID,
                 [Query.equal('userId', userId)]
             );
+
             if (response.documents.length > 0) {
-                setProfile(response.documents[0]);
-                return response.documents[0];
+                let profileData = response.documents[0];
+
+                // Ensure totalSavings exists
+                if (typeof profileData.totalSavings === 'undefined') {
+                    // Update profile with totalSavings if it doesn't exist
+                    profileData = await updateUserProfile(profileData.$id, {
+                        totalSavings: 0
+                    });
+                }
+
+                setProfile(profileData);
+                return profileData;
+            } else {
+                // Create a new profile if none exists
+                const newProfile = await createUserProfile({
+                    userId: userId,
+                    currentBalance: 0,
+                    totalSavings: 0,
+                    name: 'User'
+                });
+                setProfile(newProfile);
+                return newProfile;
             }
         } catch (error) {
             console.error('Error fetching profile:', error);
             Alert.alert('Error', 'Failed to fetch profile data');
+            return null;
         }
     };
 
@@ -365,9 +387,18 @@ const HomeScreen = ({ navigation }) => {
 
     // Fetch all data
     const fetchData = async () => {
+        setIsLoading(true);
         try {
             const user = await account.get();
+            if (!user) {
+                throw new Error('No user found');
+            }
+
             const profileData = await fetchUserProfile(user.$id);
+            if (!profileData) {
+                throw new Error('No profile found');
+            }
+
             const transactionsData = await fetchTransactions(user.$id);
             const budgetsData = await fetchBudgets(user.$id);
 
@@ -376,7 +407,7 @@ const HomeScreen = ({ navigation }) => {
             console.error('Error fetching data:', error);
             Alert.alert('Error', 'Failed to fetch data');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -617,7 +648,7 @@ const HomeScreen = ({ navigation }) => {
                             </View>
                         </View>
                     ))}
-                    ))}
+                    ))
                 </ScrollView>
 
                 {/* Update Savings Modal */}
