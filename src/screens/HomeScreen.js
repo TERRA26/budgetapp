@@ -13,9 +13,10 @@ import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Query } from 'appwrite';
-import { databases, account } from '../services/appwrite';
+import {databases, account, updateBudgetSavings} from '../services/appwrite';
 import {LinearGradient} from "expo-linear-gradient";
 import { calculateBudgetProgress } from '../services/BudgetService';
+import BudgetProgressCard from "../components/BudgetProgressCard";
 
 const DATABASE_ID = 'budgetease';
 const PROFILES_COLLECTION_ID = 'profiles';
@@ -31,6 +32,9 @@ const HomeScreen = ({ navigation }) => {
     const [expenseData, setExpenseData] = useState(null);
     const [isNewBudgetModalVisible, setIsNewBudgetModalVisible] = useState(false);
     const [isNewTransactionModalVisible, setIsNewTransactionModalVisible] = useState(false);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [selectedBudgetId, setSelectedBudgetId] = useState(null);
+    const [savingsAmount, setSavingsAmount] = useState('');
     const [newBudget, setNewBudget] = useState({
         category: '',
         amount: '',
@@ -77,7 +81,6 @@ const HomeScreen = ({ navigation }) => {
         }
     };
 
-    // Fetch budgets from Appwrite
     const fetchBudgets = async (userId) => {
         try {
             const response = await databases.listDocuments(
@@ -86,7 +89,6 @@ const HomeScreen = ({ navigation }) => {
                 [Query.equal('userId', userId)]
             );
 
-            // Process each budget with the calculation
             const processedBudgets = response.documents.map(budget => ({
                 ...budget,
                 progress: calculateBudgetProgress(budget)
@@ -102,8 +104,49 @@ const HomeScreen = ({ navigation }) => {
 
     const handleUpdateSavings = async (budgetId, amount) => {
         try {
-            await updateSavingsProgress(budgetId, amount);
-            await fetchBudgets(user.$id); // Refresh budgets
+            const numAmount = parseFloat(amount);
+            if (isNaN(numAmount) || numAmount <= 0) {
+                throw new Error('Please enter a valid amount');
+            }
+
+            // Check if there's enough available balance
+            if (numAmount > profile.availableBalance) {
+                throw new Error('Insufficient available balance');
+            }
+
+            // Update the budget's savings
+            await updateBudgetSavings(budgetId, numAmount);
+
+            // Update the profile with new available balance and total savings
+            const updatedProfile = await updateUserProfile(profile.$id, {
+                availableBalance: profile.availableBalance - numAmount,
+                totalSavings: (profile.totalSavings || 0) + numAmount
+            });
+
+            // Update local state
+            setProfile(updatedProfile);
+
+            // Refresh budgets
+            fetchBudgets(profile.userId);
+
+            Alert.alert('Success', 'Savings updated successfully');
+        } catch (error) {
+            console.error('Error updating savings:', error);
+            Alert.alert('Error', error.message || 'Failed to update savings');
+        }
+    };
+
+    const submitSavingsUpdate = async () => {
+        if (!savingsAmount || isNaN(savingsAmount)) {
+            Alert.alert('Error', 'Please enter a valid amount');
+            return;
+        }
+
+        try {
+            await updateBudgetSavings(selectedBudgetId, parseFloat(savingsAmount));
+            await fetchBudgets(user.$id);
+            setIsModalVisible(false);
+            setSavingsAmount('');
             Alert.alert('Success', 'Savings updated successfully!');
         } catch (error) {
             Alert.alert('Error', 'Failed to update savings');
@@ -504,58 +547,65 @@ const HomeScreen = ({ navigation }) => {
                 </KeyboardAvoidingView>
             </Modal>
 
-            {/* Budgets List */}
-            <View style={styles.budgetsContainer}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Your Budgets</Text>
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => setIsNewBudgetModalVisible(true)}
-                    >
-                        <Text style={styles.addButtonText}>+ Add Budget</Text>
-                    </TouchableOpacity>
-                </View>
-                {budgets.map((budget) => (
-                    <View key={budget.$id} style={styles.budgetItem}>
-                        <View style={styles.budgetHeader}>
-                            <Text style={styles.budgetCategory}>{budget.category}</Text>
-                            <Text style={styles.budgetAmount}>
-                                {formatCurrency(budget.amount)}
+            <View style={styles.container}>
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <View style={styles.summaryContainer}>
+                        <Text style={styles.summaryTitle}>Savings Overview</Text>
+                        <Text style={styles.summarySubtitle}>
+                            Track your progress towards financial goals
+                        </Text>
+                        <View style={styles.balanceCard1}>
+                            <Text style={styles.balanceLabel1}>Total Savings</Text>
+                            <Text style={styles.balanceAmount1}>
+                                {formatCurrency(profile.totalSavings || 0)}
                             </Text>
                         </View>
-                        <View style={styles.budgetProgress}>
-                            {/* Calculate spent amount from transactions */}
-                            {(() => {
-                                const spent = transactions
-                                    .filter(t =>
-                                        t.category === budget.category &&
-                                        t.type === 'expense' &&
-                                        new Date(t.date).getMonth() === new Date().getMonth()
-                                    )
-                                    .reduce((sum, t) => sum + t.amount, 0);
-                                const percentage = Math.min((spent / budget.amount) * 100, 100);
+                    </View>
 
-                                return (
-                                    <>
-                                        <View
-                                            style={[
-                                                styles.progressBar,
-                                                { width: `${percentage}%` },
-                                                { backgroundColor: percentage > 90 ? '#F44336' : '#4CAF50' }
-                                            ]}
-                                        />
-                                        <Text style={styles.budgetSpent}>
-                                            Spent: {formatCurrency(spent)} / {formatCurrency(budget.amount)}
-                                        </Text>
-                                    </>
-                                );
-                            })()}
+                    {budgets.map(budget => (
+                        <BudgetProgressCard
+                            key={budget.$id}
+                            budget={budget}
+                            onUpdateSavings={handleUpdateSavings}
+                        />
+                    ))}
+                </ScrollView>
+
+                {/* Update Savings Modal */}
+                <Modal
+                    visible={isModalVisible}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setIsModalVisible(false)}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Update Savings</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter amount"
+                                keyboardType="decimal-pad"
+                                value={savingsAmount}
+                                onChangeText={setSavingsAmount}
+                            />
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={() => setIsModalVisible(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.submitButton]}
+                                    onPress={submitSavingsUpdate}
+                                >
+                                    <Text style={styles.submitButtonText}>Update</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                ))}
+                </Modal>
             </View>
-
-
         </ScrollView>
     );
 };
@@ -816,28 +866,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 10,
     },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
     modalTitle: {
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 20,
         color: '#333',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 20,
-        width: '80%',
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 20,
     },
     cancelButton: {
         backgroundColor: '#F44336',
@@ -851,11 +884,6 @@ const styles = StyleSheet.create({
     },
     incomeContainer: {
         marginTop: 10,
-    },
-    modalButton: {
-        flex: 1,
-        alignItems: 'center',
-        marginHorizontal: 5,
     },
     input: {
         backgroundColor: '#fff',
@@ -930,6 +958,74 @@ const styles = StyleSheet.create({
     addButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+    },
+    container1: {
+        flex: 1,
+        backgroundColor: '#F5F5F5',
+    },
+    scrollContent: {
+        padding: 16,
+    },
+    summaryContainer: {
+        marginBottom: 24,
+    },
+    summaryTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    summarySubtitle: {
+        fontSize: 16,
+        color: '#666',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        padding: 24,
+        width: '80%',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+    },
+    modalButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    submitButton: {
+        backgroundColor: '#1976D2',
+    },
+    cancelButtonText: {
+        color: '#666',
+        fontSize: 16,
+    },
+    submitButtonText: {
+        color: '#FFF',
+        fontSize: 16,
+    },
+    balanceCard1: {
+        backgroundColor: '#f0f8ff', // Light blue background
+        padding: 15,
+        borderRadius: 10,
+        marginVertical: 10,
+    },
+    balanceLabel1: {
+        fontSize: 16,
+        color: '#666',
+    },
+    balanceAmount1: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#2196F3',
     },
 });
 
