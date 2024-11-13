@@ -121,6 +121,7 @@ const HomeScreen = ({ navigation }) => {
             }
 
             // Update the budget's savings
+            console.log(`Updating budget savings for budget ID: ${selectedBudget.$id} with amount: ${numAmount}`);
             await updateBudgetSavings(selectedBudget.$id, numAmount);
 
             // Calculate total savings from all budgets
@@ -134,7 +135,8 @@ const HomeScreen = ({ navigation }) => {
                 sum + (parseFloat(budget.currentSaved) || 0), 0);
 
             // Update the profile with new balance and total savings
-            const updatedProfile = await updateUserProfile(profile.$id, {
+            console.log(`Updating user profile with new balance: ${profile.currentBalance - numAmount} and total savings: ${totalSavings}`);
+            const updatedProfile = await updateUserProfile({
                 currentBalance: profile.currentBalance - numAmount,
                 totalSavings: totalSavings
             });
@@ -417,7 +419,7 @@ const HomeScreen = ({ navigation }) => {
                         Hello, {profile?.name || 'User'} 👋
                     </Text>
                     <View style={styles.balanceContainer}>
-                        <Text style={styles.balanceLabel}>Current Balance</Text>
+                        <Text style={styles.balanceLabel}>Available Balance</Text>
                         <Text style={styles.balanceAmount}>
                             {formatCurrency(profile?.currentBalance || 0)}
                         </Text>
@@ -599,9 +601,12 @@ const HomeScreen = ({ navigation }) => {
                                         style={[
                                             styles.progressBar,
                                             {
-                                                width: `${Math.min(((budget.currentSaved || 0) / budget.amount) * 100, 100)}%`,
-                                                backgroundColor: '#4CAF50'
-                                            }
+                                                width: `${Math.min(
+                                                    ((budget.currentSaved || 0) / budget.amount) * 100,
+                                                    100
+                                                )}%`,
+                                                backgroundColor: '#4CAF50',
+                                            },
                                         ]}
                                     />
                                 </View>
@@ -1172,6 +1177,86 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 20,
         color: '#333',
+    },
+    summaryContainer: {
+        marginBottom: 24,
+    },
+    summaryTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    summarySubtitle: {
+        fontSize: 16,
+        color: '#666',
+    },
+    balanceCard1: {
+        backgroundColor: '#f0f8ff', // Light blue background
+        padding: 15,
+        borderRadius: 10,
+        marginVertical: 10,
+    },
+    balanceLabel1: {
+        fontSize: 16,
+        color: '#666',
+    },
+    balanceAmount1: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#2196F3',
+    },
+    budgetItem: {
+        marginBottom: 15,
+        padding: 15,
+        backgroundColor: '#f8f9fa', // Light grey background
+        borderRadius: 10,
+    },
+    budgetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    budgetCategory: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    budgetAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#5196F4',
+    },
+    budgetProgress: {
+        marginTop: 10,
+    },
+    savingsInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 5,
+    },
+    progressBarContainer: {
+        height: 10,
+        backgroundColor: '#e9ecef',
+        borderRadius: 5,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        position: 'absolute',
+        left: 0,
+    },
+    addSavingsButton: {
+        backgroundColor: '#4CAF50',
+        padding: 8,
+        borderRadius: 8,
+        marginTop: 10,
+    },
+    addSavingsButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
 });
 
