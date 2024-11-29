@@ -61,9 +61,6 @@ function LoginScreen({ navigation }) {
 
                     {error ? <Text style={styles.error}>{error}</Text> : null}
 
-                    <TouchableOpacity style={styles.forgotPassword}>
-                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                    </TouchableOpacity>
 
                     <CustomButton
                         title="Login"
@@ -153,14 +150,6 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 50,
         backgroundColor: 'transparent',
-    },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-        marginBottom: 20,
-    },
-    forgotPasswordText: {
-        color: '#2196F3',
-        fontSize: 14,
     },
     loginButton: {
         backgroundColor: '#2196F3',

@@ -124,6 +124,9 @@ function RegisterScreen({ navigation }) {
             // Create user account
             const userAccount = await createAccount(email, password, name);
 
+            // Calculate initial available balance from connected bank accounts
+            const initialBalance = connectedBanks.reduce((total, bank) => total + bank.balance, 0);
+
             // Calculate budget limits based on monthly income
             const monthlyBudgetLimit = parseFloat(monthlyIncome) * 0.8; // 80% of income
             const weeklyBudgetLimit = monthlyBudgetLimit / 4;
@@ -144,6 +147,7 @@ function RegisterScreen({ navigation }) {
                 savingGoals: savingGoal,
                 targetAmount: parseFloat(targetAmount),
                 targetDate: targetDate.toISOString(),
+                currentBalance: initialBalance,
                 riskTolerance,
                 preferredBudgetInterval,
                 connectedAccounts,
@@ -154,8 +158,20 @@ function RegisterScreen({ navigation }) {
 
             await createUserProfile(profileData);
 
-            navigation.navigate('Home', {
-                message: 'Account created successfully! Welcome to your dashboard.'
+            // Updated navigation code
+            navigation.reset({
+                index: 0,
+                routes: [
+                    {
+                        name: 'MainApp',
+                        params: {
+                            screen: 'HomeTab',
+                            params: {
+                                message: 'Account created successfully! Welcome to your dashboard.'
+                            }
+                        }
+                    }
+                ]
             });
         } catch (error) {
             console.error('Registration error:', error);
@@ -246,7 +262,7 @@ function RegisterScreen({ navigation }) {
             </View>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Saving Goal</Text>
+                <Text style={styles.label}>Choose Your First Saving Goal</Text>
                 <View style={styles.goalOptions}>
                     {Object.values(SAVING_GOALS).map((goal) => (
                         <TouchableOpacity
@@ -311,7 +327,7 @@ function RegisterScreen({ navigation }) {
                         disabled={isConnectingBank}
                     >
                         <MaterialIcons name="add" size={24} color="#1976D2" />
-                        <Text style={styles.bankButtonText}>ACB</Text>
+                        <Text style={styles.bankButtonText}>CIBC</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -329,7 +345,7 @@ function RegisterScreen({ navigation }) {
                         disabled={isConnectingBank}
                     >
                         <MaterialIcons name="add" size={24} color="#1976D2" />
-                        <Text style={styles.bankButtonText}>CIBC</Text>
+                        <Text style={styles.bankButtonText}>ACB</Text>
                     </TouchableOpacity>
                 </View>
             </View>
