@@ -9,7 +9,6 @@ import {
 } from '@env';
 
 const client = new Client();
-
 client
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
@@ -17,16 +16,13 @@ client
 export const account = new Account(client);
 export const databases = new Databases(client);
 
-// Auth Functions
 export const createAccount = async (email, password, name) => {
     try {
-        console.log('Starting account creation...'); // Debug log
+        console.log('Starting account creation...');
 
-        // First, try to delete any existing session
         try {
             await account.deleteSession('current');
         } catch (e) {
-            // Ignore error if no session exists
             console.log('No existing session to delete');
         }
 
@@ -38,7 +34,6 @@ export const createAccount = async (email, password, name) => {
         );
         console.log('Account created, attempting login...'); // Debug log
 
-        // Create new session
         await account.createEmailPasswordSession(email, password);
         console.log('Session created successfully'); // Debug log
 
@@ -49,10 +44,9 @@ export const createAccount = async (email, password, name) => {
     }
 };
 
-// Profile Functions
 export const createUserProfile = async (profileData) => {
     try {
-        console.log('Creating user profile...'); // Debug log
+        console.log('Creating user profile...');
 
         return await databases.createDocument(
             APPWRITE_DATABASE_ID,
@@ -110,15 +104,12 @@ export const updateUserProfile = async (profileId, updateData) => {
 
 export const login = async (email, password) => {
     try {
-        // First, try to delete any existing session
         try {
             await account.deleteSession('current');
         } catch (e) {
-            // Ignore error if no session exists
             console.log('No existing session to delete');
         }
 
-        // Create new session
         const session = await account.createEmailPasswordSession(email, password);
         const user = await account.get();
         const profile = await getUserProfile(user.$id);
@@ -139,7 +130,6 @@ export const logout = async () => {
     }
 };
 
-// Transaction Functions
 export const createTransaction = async (transactionData) => {
     try {
         const user = await account.get();
@@ -221,5 +211,3 @@ export const updateBudgetSavings = async (budgetId, amountSaved) => {
         throw error;
     }
 };
-
-

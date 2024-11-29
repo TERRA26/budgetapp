@@ -115,16 +115,13 @@ const HomeScreen = ({ navigation }) => {
                 throw new Error('Please enter a valid amount');
             }
 
-            // Check if there's enough available balance
             if (numAmount > profile.currentBalance) {
                 throw new Error('Insufficient available balance');
             }
 
-            // Update the budget's savings
             console.log(`Updating budget savings for budget ID: ${selectedBudget.$id} with amount: ${numAmount}`);
             await updateBudgetSavings(selectedBudget.$id, numAmount);
 
-            // Calculate total savings from all budgets
             const budgetsResponse = await databases.listDocuments(
                 DATABASE_ID,
                 BUDGETS_COLLECTION_ID,
@@ -134,20 +131,17 @@ const HomeScreen = ({ navigation }) => {
             const totalSavings = budgetsResponse.documents.reduce((sum, budget) =>
                 sum + (parseFloat(budget.currentSaved) || 0), 0);
 
-            // Update the profile with new balance and total savings
             console.log(`Updating user profile with new balance: ${profile.currentBalance - numAmount} and total savings: ${totalSavings}`);
             const updatedProfile = await updateUserProfile({
                 currentBalance: profile.currentBalance - numAmount,
                 totalSavings: totalSavings
             });
 
-            // Update local state
             setProfile(updatedProfile);
             setIsSavingsModalVisible(false);
             setSavingsAmount('');
             setSelectedBudget(null);
 
-            // Refresh budgets
             fetchBudgets(profile.userId);
 
             Alert.alert('Success', 'Savings updated successfully');
@@ -174,7 +168,6 @@ const HomeScreen = ({ navigation }) => {
         }
     };
 
-    // Fetch transactions from Appwrite
     const fetchTransactions = async (userId) => {
         try {
             const response = await databases.listDocuments(
@@ -317,8 +310,8 @@ const HomeScreen = ({ navigation }) => {
             for (let i = 0; i < 10; i++) {
                 const isExpense = Math.random() > 0.3;
                 const amount = isExpense
-                    ? Math.floor(Math.random() * (monthlyIncome * 0.2))
-                    : Math.floor(Math.random() * (monthlyIncome * 0.5));
+                    ? Math.floor(Math.random() * (monthlyIncome * 0.5))
+                    : Math.floor(Math.random() * (monthlyIncome * 0.7));
 
                 const category = isExpense
                     ? categories[Math.floor(Math.random() * categories.length)]
@@ -713,174 +706,118 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f8f9fb',
+    },
+    headerGradient: {
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     header: {
-        padding: 65,
-        backgroundColor: '#5196F4',
-        marginTop: 0,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 3,
-        },
-        shadowOpacity: 0.27,
-        shadowRadius: 4.65,
-        elevation: 6,
+        padding: 25,
+        paddingTop: Platform.OS === 'ios' ? 60 : 25,
+        paddingBottom: 35,
     },
     welcomeText: {
-        fontSize: 24,
+        fontSize: 28,
         color: '#fff',
-        fontWeight: 'bold',
-        marginBottom: 40,
-        marginLeft: -35,
+        fontWeight: '700',
+        marginBottom: 20,
         textShadowColor: 'rgba(0, 0, 0, 0.2)',
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 3,
     },
-    balanceCard: {
+    balanceContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.15)',
         padding: 20,
-        borderRadius: 25,
-        alignItems: 'center',
-        marginRight: 125,
-        marginLeft: -40,
-        marginTop: -20,
+        borderRadius: 20,
+        marginHorizontal: 5,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     balanceLabel: {
         color: '#fff',
-        fontSize: 16,
-        opacity: 0.8,
+        fontSize: 18,
+        opacity: 0.9,
         fontWeight: '600',
+        marginBottom: 8,
     },
     balanceAmount: {
         color: '#fff',
-        fontSize: 32,
+        fontSize: 36,
         fontWeight: 'bold',
-        marginTop: 5,
         letterSpacing: 1,
     },
+    monthlyIncome: {
+        color: '#fff',
+        fontSize: 16,
+        opacity: 0.9,
+        marginTop: 10,
+    },
     quickActions: {
-        flexDirection: 'column',
-        justifyContent: 'space-around',
-        padding: 10,
-        marginTop: -190,
-        marginLeft: 280,
-        marginRight: -100,
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        padding: 15,
+        marginTop: -35,
+        marginRight: 15,
         zIndex: 1,
     },
     actionButton: {
-        padding: 15,
-        borderRadius: 100,
-        width: '25%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 10,
-        marginBottom: 20,
+        backgroundColor: '#5196F4',
+        padding: 12,
+        borderRadius: 50,
+        marginLeft: 10,
+        elevation: 5,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-        borderWidth: 3,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-
     },
     chartContainer: {
-        backgroundColor: 'white',
-        marginTop: 30,
-        margin: 20,
-        padding: 15,
-        borderRadius: 15,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.23,
-        shadowRadius: 2.62,
-    },
-    budgetLineContainer: {
         backgroundColor: '#fff',
-        margin: 20,
-        marginTop: 10,
-        padding: 15,
-        borderRadius: 15,
-        elevation: 3,
+        margin: 15,
+        marginTop: 25,
+        padding: 20,
+        borderRadius: 20,
+        elevation: 4,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.23,
-        shadowRadius: 2.62,
-    },
-    budgetLineTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 10,
-    },
-    budgetLineInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 5,
-    },
-    budgetLineText: {
-        fontSize: 14,
-        color: '#666',
-    },
-    budgetLineAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#5196F4',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
     sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontWeight: '700',
         marginBottom: 15,
-        color: '#333',
-        letterSpacing: 0.5,
-    },
-    chart: {
-        marginVertical: 3,
-        borderRadius: 16,
-        marginLeft: -15,
+        color: '#2c3e50',
     },
     transactionsContainer: {
         backgroundColor: '#fff',
-        margin: 20,
-        padding: 15,
-        borderRadius: 15,
-        elevation: 3,
+        margin: 15,
+        padding: 20,
+        borderRadius: 20,
+        elevation: 4,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.23,
-        shadowRadius: 2.62,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
     transactionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        padding: 15,
+        marginBottom: 10,
+        backgroundColor: '#f8f9fb',
+        borderRadius: 15,
     },
     transactionIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 45,
+        height: 45,
+        borderRadius: 23,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 15,
@@ -889,374 +826,153 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     transactionCategory: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#2c3e50',
+        marginBottom: 4,
     },
     transactionDate: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 2,
+        color: '#7f8c8d',
     },
     transactionAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    budgetProgressFill: {
-        height: '100%',
-        borderRadius: 3,
-    },
-    addBudgetButton: {
-        backgroundColor: '#5196F4',
-        padding: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    addBudgetButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    errorText: {
-        color: '#F44336',
-        fontSize: 14,
-        marginTop: 5,
-        textAlign: 'center',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-    },
-    noDataText: {
-        fontSize: 16,
-        color: '#666',
-        textAlign: 'center',
-        marginTop: 20,
-    },
-    refreshButton: {
-        backgroundColor: '#5196F4',
-        padding: 10,
-        borderRadius: 8,
-        marginTop: 10,
-    },
-    refreshButtonText: {
-        color: '#fff',
-        fontSize: 14,
+        fontSize: 17,
         fontWeight: '600',
-    },
-    actionButtonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginTop: -40,
-        marginBottom: 20,
-    },
-    viewAllButton: {
-        padding: 5,
-    },
-    viewAllText: {
-        color: '#5196F4',
-        fontWeight: 'bold',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        color: '#333',
-    },
-    cancelButton: {
-        backgroundColor: '#F44336',
-        padding: 15,
-        borderRadius: 15,
-    },
-    createButton: {
-        backgroundColor: '#4CAF50',
-        padding: 15,
-        borderRadius: 15,
-    },
-    incomeContainer: {
-        marginTop: 10,
-    },
-    input: {
-        backgroundColor: '#fff',
-        padding: 15,
-        borderRadius: 15,
-        borderWidth: 1,
-        borderColor: '#000',
-        marginBottom: 15,
-
-    },
-    budgetsContainer: {
-        backgroundColor: '#fff',
-        margin: 20,
-        padding: 15,
-        borderRadius: 15,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.23,
-        shadowRadius: 2.62,
     },
     budgetItem: {
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 20,
         marginBottom: 15,
-        padding: 15,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 10,
-    },
-    budgetHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    budgetCategory: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    budgetAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#5196F4',
-    },
-    budgetProgress: {
-        height: 30,
-        backgroundColor: '#e9ecef',
-        borderRadius: 5,
-        overflow: 'hidden',
-    },
-    progressBar: {
-        height: '100%',
-        position: 'absolute',
-        left: 0,
-    },
-    budgetSpent: {
-        position: 'absolute',
-        width: '100%',
-        textAlign: 'center',
-        lineHeight: 30,
-        color: '#333',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    addButton: {
-        backgroundColor: '#5196F4',
-        padding: 8,
-        borderRadius: 8,
-    },
-    addButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    container1: {
-        flex: 1,
-        backgroundColor: '#F5F5F5',
-    },
-    scrollContent: {
-        padding: 16,
-    },
-    summaryContainer: {
-        marginBottom: 24,
-    },
-    summaryTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 4,
-    },
-    summarySubtitle: {
-        fontSize: 16,
-        color: '#666',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
     },
     modalContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    modalContent: {
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        padding: 24,
-        width: '80%',
-    },
-    modalButtons: {
-        flexDirection: 'row',
         justifyContent: 'flex-end',
-    },
-    modalButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        marginLeft: 8,
-    },
-    submitButton: {
-        backgroundColor: '#1976D2',
-    },
-    cancelButtonText: {
-        color: '#666',
-        fontSize: 16,
-    },
-    submitButtonText: {
-        color: '#FFF',
-        fontSize: 16,
-    },
-    balanceCard1: {
-        backgroundColor: '#f0f8ff', // Light blue background
-        padding: 15,
-        borderRadius: 10,
-        marginVertical: 10,
-    },
-    balanceLabel1: {
-        fontSize: 16,
-        color: '#666',
-    },
-    balanceAmount1: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#2196F3',
-    },
-    addSavingsButton: {
-        backgroundColor: '#4CAF50',
-        padding: 8,
-        borderRadius: 8,
-        marginTop: 10,
-    },
-    addSavingsButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    budgetName: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 10,
-        color: '#333',
-    },
-    currentSavings: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 15,
-    },
-    savingsInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 5,
-    },
-    progressBarContainer: {
-        height: 10,
-        backgroundColor: '#e9ecef',
-        borderRadius: 5,
-        overflow: 'hidden',
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
         backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 20,
-        width: '80%',
+        padding: 25,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        minHeight: '45%',
     },
     modalTitle: {
         fontSize: 24,
         fontWeight: 'bold',
+        color: '#2c3e50',
+        marginBottom: 25,
+    },
+    input: {
+        backgroundColor: '#f8f9fb',
+        padding: 15,
+        borderRadius: 15,
+        fontSize: 16,
         marginBottom: 20,
-        color: '#333',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    modalButton: {
+        flex: 1,
+        padding: 15,
+        borderRadius: 15,
+        marginHorizontal: 5,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    cancelButton: {
+        backgroundColor: '#e74c3c',
+    },
+    createButton: {
+        backgroundColor: '#2ecc71',
     },
     summaryContainer: {
-        marginBottom: 24,
+        margin: 15,
+        marginTop: 25,
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
     summaryTitle: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 4,
+        color: '#2c3e50',
+        marginBottom: 10,
     },
     summarySubtitle: {
         fontSize: 16,
-        color: '#666',
+        color: '#7f8c8d',
+        marginBottom: 15,
     },
     balanceCard1: {
-        backgroundColor: '#f0f8ff', // Light blue background
-        padding: 15,
-        borderRadius: 10,
-        marginVertical: 10,
+        backgroundColor: '#ecf0f1',
+        padding: 20,
+        borderRadius: 15,
+        marginTop: 10,
     },
     balanceLabel1: {
         fontSize: 16,
-        color: '#666',
+        color: '#7f8c8d',
+        marginBottom: 5,
     },
     balanceAmount1: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
-        color: '#2196F3',
-    },
-    budgetItem: {
-        marginBottom: 15,
-        padding: 15,
-        backgroundColor: '#f8f9fa', // Light grey background
-        borderRadius: 10,
-    },
-    budgetHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    budgetCategory: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    budgetAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#5196F4',
+        color: '#2980b9',
     },
     budgetProgress: {
-        marginTop: 10,
+        marginTop: 15,
     },
     savingsInfo: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 5,
+        marginBottom: 10,
     },
     progressBarContainer: {
-        height: 10,
-        backgroundColor: '#e9ecef',
-        borderRadius: 5,
+        height: 12,
+        backgroundColor: '#ecf0f1',
+        borderRadius: 6,
         overflow: 'hidden',
+        marginBottom: 15,
     },
     progressBar: {
         height: '100%',
-        position: 'absolute',
-        left: 0,
+        borderRadius: 6,
     },
     addSavingsButton: {
-        backgroundColor: '#4CAF50',
-        padding: 8,
-        borderRadius: 8,
-        marginTop: 10,
+        backgroundColor: '#27ae60',
+        padding: 12,
+        borderRadius: 12,
+        alignItems: 'center',
     },
     addSavingsButtonText: {
         color: '#fff',
-        fontWeight: 'bold',
-        textAlign: 'center',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 
